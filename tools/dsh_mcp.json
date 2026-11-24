@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "work-rag": {
+      "type": "stdio",
+      "command": "/bin/sh",
+      "args": [
+        "/absolute/path/to/work-rag/tools/run_mcp.sh",
+        "/absolute/path/to/library"
+      ],
+      "env": {},
+      "toolCallTimeoutMs": 120000,
+      "enabled": true
+    }
+  }
+}

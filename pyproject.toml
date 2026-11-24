@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=66", "wheel>=0.38"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "work-rag"
+version = "0.4.0"
+description = "Agent-operable personal source library and task core"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "openpyxl>=3.1,<4",
+    "pypdfium2>=5,<6",
+    "Pillow>=10,<13",
+    "mcp>=1.30,<2",
+    "tzdata; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+ocr = ["rapidocr-onnxruntime>=1.4,<2"]
+
+[project.scripts]
+work-rag = "work_rag.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["work_rag*"]

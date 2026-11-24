@@ -1,0 +1,51 @@
+{
+  "name": "work-rag-dsh-work",
+  "version": "0.1.2",
+  "private": true,
+  "type": "module",
+  "description": "work-rag no-model task commands and session sidebar",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./client/client.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "lib",
+    "client",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.13",
+    "dsh": "0.2.2-rc.1"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/test.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "esbuild": "0.25.12",
+    "react": "^19.0.0",
+    "react-dom": "^19.3.1",
+    "typescript": "5.9.3",
+    "zod": "4.4.3"
+  },
+  "license": "UNLICENSED"
+}
