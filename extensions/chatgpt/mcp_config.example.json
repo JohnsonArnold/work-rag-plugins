@@ -1,0 +1,12 @@
+{
+  "name": "work-rag",
+  "transport": "stdio",
+  "command": "D:\\work-rag\\work-rag-plugins\\.venv-win\\Scripts\\python.exe",
+  "args": [
+    "-m",
+    "work_rag",
+    "--data-dir",
+    "D:\\work-rag\\.work-rag-data",
+    "mcp"
+  ]
+}

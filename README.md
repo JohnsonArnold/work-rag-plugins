@@ -73,6 +73,13 @@ work-rag --data-dir /已有父目录/新恢复目录 status
 
 备份保留一致的数据库快照和引用原件，包括附件、历史证据及复盘。恢复使用新目录。完整性检查会逐个核对引用快照。
 
+## 多目录管理与 Antigravity / ChatGPT 共享接入
+
+支持在库中登记多个本地日常工作目录（`root add/list/update/remove/scan/sync`），预览新增、变更与原文件移走差异，并显式同步为不可变快照及可选自动建索引（`kb index`）。
+
+- **Antigravity 插件（含可视化 MCP App 面板）**：见 [Antigravity 插件说明](extensions/antigravity-plugin/README.md)。通过 `mcp --enable-app` 提供右侧边栏与左侧全屏面板，可在界面内手动添加多个工作目录、浏览文件夹、差异同步、管理资料与直写事项（零模型调用）。
+- **ChatGPT 桌面端 / Codex（Windows 共享同一库）**：见 [ChatGPT 接入说明](extensions/chatgpt/README.md)。指向同一 `--data-dir`（不加 `--enable-app`），即可直接检索、读取和计算 Antigravity 面板同步的全部资料，并与之共享事项和复盘。
+
 ## DSH 事项入口
 
 在 DSH Web `0.2.2-rc.1` 可安装 [事项扩展](extensions/dsh-work/README.md)。`/work` 和会话右侧「事项」直接调用本地核心，与 MCP 共用事项库。同一 DSH 实例的不同设备可以接续同一会话的草稿。

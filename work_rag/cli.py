@@ -76,6 +76,7 @@ def parser() -> argparse.ArgumentParser:
     tags = update.add_mutually_exclusive_group()
     tags.add_argument("--tag", action="append")
     tags.add_argument("--clear-tags", action="store_true")
+    update.add_argument("--request-id")
     catalog = sources.add_parser("catalog")
     catalog.add_argument("--query", default="")
     catalog.add_argument("--suffix")
@@ -141,11 +142,43 @@ def parser() -> argparse.ArgumentParser:
     search.add_argument("--cursor")
     resolve = kb.add_parser("resolve")
     resolve.add_argument("reference", type=_json_input)
+    index_cmd = kb.add_parser("index", help="按需解析并建立指定版本的全文检索索引")
+    index_cmd.add_argument("source_id")
+    index_cmd.add_argument("--version-id")
+    index_cmd.add_argument("--ocr", action="store_true")
+    roots = commands.add_parser("root", help="受管本地资料源目录配置与同步").add_subparsers(dest="action", required=True)
+    root_add = roots.add_parser("add")
+    root_add.add_argument("path")
+    root_add.add_argument("--name")
+    root_add.add_argument("--recursive", action=argparse.BooleanOptionalAction, default=True)
+    root_add.add_argument("--suffix", action="append")
+    root_add.add_argument("--enabled", action=argparse.BooleanOptionalAction, default=True)
+    root_list = roots.add_parser("list")
+    root_list.add_argument("--enabled-only", action="store_true")
+    root_get = roots.add_parser("get")
+    root_get.add_argument("root_id")
+    root_update = roots.add_parser("update")
+    root_update.add_argument("root_id")
+    root_update.add_argument("--name")
+    root_update.add_argument("--path")
+    root_update.add_argument("--recursive", action=argparse.BooleanOptionalAction, default=None)
+    root_update.add_argument("--suffix", action="append")
+    root_update.add_argument("--enabled", action=argparse.BooleanOptionalAction, default=None)
+    root_remove = roots.add_parser("remove")
+    root_remove.add_argument("root_id")
+    root_scan = roots.add_parser("scan")
+    root_scan.add_argument("root_id", nargs="?")
+    root_scan.add_argument("--include-unchanged", action="store_true")
+    root_sync = roots.add_parser("sync")
+    root_sync.add_argument("root_id", nargs="?")
+    root_sync.add_argument("--no-index", action="store_true")
+    root_sync.add_argument("--ocr", action="store_true")
     backup = commands.add_parser("backup")
     backup.add_argument("destination")
     restore = commands.add_parser("restore")
     restore.add_argument("backup")
-    commands.add_parser("mcp", help="本地 MCP stdio 服务")
+    mcp_cmd = commands.add_parser("mcp", help="本地 MCP stdio 服务")
+    mcp_cmd.add_argument("--enable-app", action="store_true", help="启用 Antigravity MCP App 交互面板与 UI 专用工具")
     return root
 
 
@@ -178,6 +211,8 @@ def execute(args: argparse.Namespace, app: Application) -> Result:
         return Result(app.journal.reviews(args.limit))
     if args.command == "kb":
         values = {key: value for key, value in vars(args).items() if key not in {"command", "action", "data_dir"}}
+        if args.action == "index":
+            return app.knowledge.index_version(**values)
         if args.action == "electricity":
             return analyze(app.knowledge, **values)
         if args.action == "electricity-total":
@@ -190,6 +225,22 @@ def execute(args: argparse.Namespace, app: Application) -> Result:
                           evidence=result.evidence, coverage=result.coverage)
         handler = getattr(app.knowledge, args.action.replace("-", "_"))
         return handler(**values)
+    if args.command == "root":
+        if args.action == "add":
+            return Result(app.roots.add(args.path, name=args.name, recursive=args.recursive,
+                                        suffixes=args.suffix, enabled=args.enabled))
+        if args.action == "list":
+            return Result(app.roots.list(enabled_only=args.enabled_only))
+        if args.action == "get":
+            return Result(app.roots.get(args.root_id))
+        if args.action == "update":
+            return Result(app.roots.update(args.root_id, name=args.name, path=args.path,
+                                           recursive=args.recursive, suffixes=args.suffix, enabled=args.enabled))
+        if args.action == "remove":
+            return Result(app.roots.remove(args.root_id))
+        if args.action == "scan":
+            return Result(app.roots.scan(args.root_id, include_unchanged=args.include_unchanged))
+        return Result(app.roots.sync(args.root_id, auto_index=not args.no_index, ocr=args.ocr))
     if args.action == "append-log":
         return Result(app.journal.append(args.task_id, args.content, args.expected_revision,
                                          corrects=args.corrects, request_id=args.request_id))
@@ -206,7 +257,7 @@ def execute(args: argparse.Namespace, app: Application) -> Result:
         changes["due"] = None
     if args.tag is not None or args.clear_tags:
         changes["tags"] = [] if args.clear_tags else args.tag
-    return Result(app.tasks.update(args.task_id, args.expected_revision, **changes))
+    return Result(app.tasks.update(args.task_id, args.expected_revision, request_id=args.request_id, **changes))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -220,7 +271,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "mcp":
             from .mcp_server import run
-            run(Application(args.data_dir))
+            enable_app = bool(args.enable_app or os.environ.get("WORK_RAG_MCP_APP") == "1")
+            run(Application(args.data_dir), enable_app=enable_app)
             return 0
         if args.command == "restore":
             from pathlib import Path

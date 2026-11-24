@@ -37,7 +37,7 @@ class CoreError(Exception):
 
 
 def new_id(kind: str) -> str:
-    if kind not in {"src", "ver", "task", "artifact", "evidence", "log", "review"}:
+    if kind not in {"src", "ver", "task", "artifact", "evidence", "log", "review", "root"}:
         raise ValueError("Unknown ID kind")
     return f"{kind}_{uuid4().hex}"
 
@@ -137,6 +137,19 @@ class SourceVersion:
     size: int
     original_name: str
     created_at: str
+
+
+@dataclass(frozen=True)
+class SourceRoot:
+    root_id: str
+    name: str
+    path: str
+    recursive: bool
+    suffixes: list[str]
+    enabled: bool
+    created_at: str
+    updated_at: str
+    last_synced_at: str | None = None
 
 
 @dataclass(frozen=True)

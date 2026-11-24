@@ -1,0 +1,23 @@
+{
+  "name": "work-rag-antigravity-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Single-file MCP App UI for work-rag in Antigravity",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.0.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "esbuild": "^0.25.12",
+    "typescript": "^5.9.3"
+  }
+}

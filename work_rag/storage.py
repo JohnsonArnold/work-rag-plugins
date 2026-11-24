@@ -21,7 +21,7 @@ from uuid import uuid4
 from .contracts import CoreError, ErrorCode, canonical_json
 from .filesystem import exclusive_file_lock, fsync_dir, publish_blob, remove_staging
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 MIGRATIONS = [
     """CREATE TABLE sources (
         source_id TEXT PRIMARY KEY, title TEXT NOT NULL,
@@ -70,6 +70,21 @@ MIGRATION_2 = [
     """CREATE TABLE source_attachments (
         version_id TEXT NOT NULL REFERENCES source_versions(version_id), relative_path TEXT NOT NULL,
         sha256 TEXT, size INTEGER, PRIMARY KEY(version_id, relative_path))""",
+]
+
+MIGRATION_4 = [
+    """CREATE TABLE source_roots (
+        root_id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        path TEXT NOT NULL,
+        normalized_path TEXT NOT NULL UNIQUE,
+        recursive INTEGER NOT NULL DEFAULT 1 CHECK(recursive IN (0,1)),
+        suffixes_json TEXT NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0,1)),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        last_synced_at TEXT
+    )""",
 ]
 
 
@@ -205,6 +220,10 @@ class Store:
                 connection.execute("INSERT INTO library_binding VALUES (1,?,?)",
                                    (f"library_{uuid4().hex}", f"generation_{uuid4().hex}"))
                 connection.execute("PRAGMA user_version=3")
+            if version < 4:
+                for statement in MIGRATION_4:
+                    connection.execute(statement)
+                connection.execute("PRAGMA user_version=4")
         fsync_dir(self.data_dir)
 
     def blob_path(self, sha256: str) -> Path:
@@ -226,6 +245,11 @@ class Store:
 
     @staticmethod
     def _signature(info: os.stat_result) -> tuple:
+        if os.name == "nt":
+            # On Windows (Python 3.12+), os.fstat() and os.stat() can disagree on st_ctime_ns
+            # (ChangeTime vs CreationTime). NTFS st_dev, st_ino, st_size, and 100ns st_mtime_ns
+            # remain consistent across both APIs and still detect file replacement or edits.
+            return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns
         return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
 
     def stage_file(self, input_path: str | Path) -> tuple[str, int]:

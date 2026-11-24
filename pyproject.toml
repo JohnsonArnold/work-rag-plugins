@@ -24,3 +24,6 @@ work-rag = "work_rag.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["work_rag*"]
+
+[tool.setuptools.package-data]
+work_rag = ["assets/*.html"]

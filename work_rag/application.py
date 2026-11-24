@@ -4,6 +4,7 @@ from pathlib import Path
 from .contracts import Result
 from .journal import Journal
 from .knowledge import Knowledge, checked_limit
+from .roots import RootService
 from .sources import SourceService
 from .storage import Store
 from .tasks import TaskService
@@ -16,6 +17,7 @@ class Application:
         self.tasks = TaskService(self.store)
         self.journal = Journal(self.store)
         self.knowledge = Knowledge(self.store, self.sources)
+        self.roots = RootService(self.store, self.sources, self.knowledge)
 
     def show_source(self, source_id, version_id=None, *, local_path=False):
         version = self.sources.version(source_id, version_id)

@@ -150,6 +150,68 @@ class Knowledge:
             item["error"] = json.loads(item["error"])
         return Result({"version": version, "artifacts": artifacts, "failures": failures})
 
+    def index_version(self, source_id, version_id=None, *, ocr=False):
+        """Parse and index a version on demand so it becomes searchable."""
+        if type(ocr) is not bool:
+            raise CoreError(ErrorCode.INVALID_ARGUMENT, "ocr must be a boolean")
+        version = self.sources.version(source_id, version_id)
+        kind = file_kind(version)
+        warnings = []
+        if kind == ".xlsx":
+            artifact, data = self._xlsx(version)
+            coverage = data.get("coverage", "success")
+            return Result({"version": version, "kind": kind, "artifact_ids": [artifact],
+                           "sheets": len(data["sheets"])}, coverage=coverage, warnings=warnings)
+        if kind in (".docx", ".md", ".txt"):
+            artifact, data = self._plain(version)
+            warnings.extend(data.get("warnings", []))
+            coverage = "partial" if warnings else "success"
+            return Result({"version": version, "kind": kind, "artifact_ids": [artifact],
+                           "parts": len(data["parts"])}, coverage=coverage, warnings=warnings)
+        if kind == ".pdf":
+            meta_artifact, meta = self._pdf(version)
+            pages = meta["pages"]
+            artifacts = [meta_artifact]
+            indexed_pages, ocr_pages, partial_pages = 0, 0, []
+            for page in range(1, pages + 1):
+                page_artifact, page_data = self._pdf(version, page)
+                artifacts.append(page_artifact)
+                page_cov = page_data.get("coverage", "success")
+                if page_cov == "success":
+                    indexed_pages += 1
+                elif ocr:
+                    try:
+                        ocr_res = self.ocr(source_id, page=page, version_id=version.version_id)
+                        ocr_pages += 1
+                        if ocr_res.evidence and ocr_res.evidence[0].artifact_id:
+                            artifacts.append(ocr_res.evidence[0].artifact_id)
+                        if ocr_res.coverage == "success":
+                            indexed_pages += 1
+                        else:
+                            partial_pages.append(page)
+                    except CoreError as error:
+                        partial_pages.append(page)
+                        warnings.append(f"page {page} OCR failed: {error}")
+                else:
+                    partial_pages.append(page)
+            if partial_pages:
+                warnings.append(f"Pages needing OCR or partial coverage: {partial_pages}")
+            coverage = "success" if not partial_pages else ("partial" if indexed_pages or ocr_pages else "not_processed")
+            return Result({"version": version, "kind": kind, "artifact_ids": artifacts,
+                           "pages": pages, "indexed_pages": indexed_pages, "ocr_pages": ocr_pages,
+                           "partial_pages": partial_pages}, coverage=coverage, warnings=warnings)
+        if kind in (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff"):
+            if not ocr:
+                warnings.append("Image sources require OCR to become text-searchable")
+                return Result({"version": version, "kind": kind, "artifact_ids": []},
+                              coverage="not_processed", warnings=warnings)
+            ocr_res = self.ocr(source_id, version_id=version.version_id)
+            aid = ocr_res.evidence[0].artifact_id if ocr_res.evidence and ocr_res.evidence[0].artifact_id else None
+            return Result({"version": version, "kind": kind, "artifact_ids": [aid] if aid else [],
+                           "lines": len(ocr_res.data.get("lines", []))},
+                          coverage=ocr_res.coverage, warnings=warnings)
+        return Result({"version": version, "kind": kind, "artifact_ids": []}, coverage="unsupported")
+
     def describe(self, source_id, version_id=None):
         version = self.sources.version(source_id, version_id)
         kind = file_kind(version)

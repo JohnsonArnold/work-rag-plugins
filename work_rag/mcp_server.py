@@ -11,7 +11,7 @@ from .contracts import CONTRACT_VERSION, CoreError, Result, canonical_json
 from .electricity import analyze, total_periods
 
 
-def server(app):
+def server(app, *, enable_app: bool = False):
     mcp = FastMCP("work-rag")
 
     def tool(*, read_only=True, idempotent=True):
@@ -160,8 +160,12 @@ def server(app):
         """List saved reviews."""
         return Result(app.journal.reviews(limit))
 
+    if enable_app:
+        from .mcp_app import register_mcp_app
+        register_mcp_app(mcp, app)
+
     return mcp
 
 
-def run(app):
-    server(app).run(transport="stdio")
+def run(app, *, enable_app: bool = False):
+    server(app, enable_app=enable_app).run(transport="stdio")
